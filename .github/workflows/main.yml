@@ -2,13 +2,21 @@ name: Convert IPA to Simulator APP
 
 on:
   workflow_dispatch:
+    inputs:
+      ipa_url:
+        description: 'https://github.com/ngquaanghuy/ios-to-app/releases/download/up/app2.ipa'
+        required: true
 
 jobs:
   convert:
     runs-on: macos-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Download IPA file
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Downloading IPA..."
+          curl -L -H "Authorization: token $GH_TOKEN" -H "Accept: application/octet-stream" "${{ github.event.inputs.ipa_url }}" -o app.ipa
 
       - name: Extract and Convert IPA to APP
         run: |
