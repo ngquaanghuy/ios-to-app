@@ -1,0 +1,39 @@
+name: Convert IPA to Simulator APP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  convert:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract and Convert IPA to APP
+        run: |
+          unzip -q app.ipa -d extracted
+          APP_PATH=$(find extracted/Payload -name "*.app" -maxdepth 1)
+          EXEC_NAME=$(defaults read "$PWD/$APP_PATH/Info.plist" CFBundleExecutable)
+          
+          echo "Converting executable: $EXEC_NAME for iOS 18.5"
+          vtool -set-build-version 7 18.5 18.5 -replace -output "$APP_PATH/$EXEC_NAME" "$APP_PATH/$EXEC_NAME"
+          
+          # Chuyển đổi thêm các file dylib/framework sang iOS 18.5 nếu có
+          find "$APP_PATH" \( -name "*.dylib" -o -path "*.framework/*" \) -type f | while read -r file; do
+            if file "$file" | grep -q "Mach-O"; then
+              vtool -set-build-version 7 18.5 18.5 -replace -output "$file" "$file" || true
+            fi
+          done
+
+          codesign --force --deep --sign - "$APP_PATH"
+          
+          mkdir output
+          mv "$APP_PATH" output/
+          cd output && zip -r -q ../SimulatorApp.zip *.app
+
+      - name: Upload Converted APP
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimulatorApp
+          path: SimulatorApp.zip
