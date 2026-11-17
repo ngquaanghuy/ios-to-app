@@ -14,18 +14,25 @@ jobs:
         run: |
           unzip -q app.ipa -d extracted
           APP_PATH=$(find extracted/Payload -name "*.app" -maxdepth 1)
-          EXEC_NAME=$(defaults read "$PWD/$APP_PATH/Info.plist" CFBundleExecutable)
+          PLIST_PATH="$PWD/$APP_PATH/Info.plist"
+          EXEC_NAME=$(defaults read "$PLIST_PATH" CFBundleExecutable)
           
-          echo "Converting executable: $EXEC_NAME for iOS 18.5"
+          echo "1. Updating Info.plist for Simulator..."
+          /usr/libexec/PlistBuddy -c "Set :CFBundleSupportedPlatforms:0 iPhoneSimulator" "$PLIST_PATH" || true
+          /usr/libexec/PlistBuddy -c "Set :DTPlatformName iphonesimulator" "$PLIST_PATH" || true
+          /usr/libexec/PlistBuddy -c "Set :DTSDKName iphonesimulator18.5" "$PLIST_PATH" || true
+          /usr/libexec/PlistBuddy -c "Delete :UIRequiredDeviceCapabilities" "$PLIST_PATH" || true
+
+          echo "2. Converting executable: $EXEC_NAME"
           vtool -set-build-version 7 18.5 18.5 -replace -output "$APP_PATH/$EXEC_NAME" "$APP_PATH/$EXEC_NAME"
           
-          # Chuyển đổi thêm các file dylib/framework sang iOS 18.5 nếu có
           find "$APP_PATH" \( -name "*.dylib" -o -path "*.framework/*" \) -type f | while read -r file; do
             if file "$file" | grep -q "Mach-O"; then
               vtool -set-build-version 7 18.5 18.5 -replace -output "$file" "$file" || true
             fi
           done
 
+          echo "3. Re-signing APP..."
           codesign --force --deep --sign - "$APP_PATH"
           
           mkdir output
@@ -37,3 +44,4 @@ jobs:
         with:
           name: SimulatorApp
           path: SimulatorApp.zip
+
