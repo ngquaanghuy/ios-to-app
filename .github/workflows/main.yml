@@ -1,4 +1,4 @@
-name: Convert IPA to Simulator APP
+name: Convert IPA to Simulator APP (iOS 27)
 
 on:
   workflow_dispatch:
@@ -29,18 +29,19 @@ jobs:
           PLIST_PATH="$PWD/$APP_PATH/Info.plist"
           EXEC_NAME=$(defaults read "$PLIST_PATH" CFBundleExecutable)
           
-          echo "1. Updating Info.plist for Simulator..."
+          echo "1. Updating Info.plist for iOS 27.0 Simulator..."
           /usr/libexec/PlistBuddy -c "Set :CFBundleSupportedPlatforms:0 iPhoneSimulator" "$PLIST_PATH" || true
           /usr/libexec/PlistBuddy -c "Set :DTPlatformName iphonesimulator" "$PLIST_PATH" || true
-          /usr/libexec/PlistBuddy -c "Set :DTSDKName iphonesimulator18.5" "$PLIST_PATH" || true
+          /usr/libexec/PlistBuddy -c "Set :DTSDKName iphonesimulator27.0" "$PLIST_PATH" || true
           /usr/libexec/PlistBuddy -c "Delete :UIRequiredDeviceCapabilities" "$PLIST_PATH" || true
 
-          echo "2. Converting executable: $EXEC_NAME"
-          vtool -set-build-version 7 18.5 18.5 -replace -output "$APP_PATH/$EXEC_NAME" "$APP_PATH/$EXEC_NAME"
+          echo "2. Converting executable: $EXEC_NAME to iOS 27.0 Simulator"
+          vtool -set-build-version 7 27.0 27.0 -replace -output "$APP_PATH/$EXEC_NAME" "$APP_PATH/$EXEC_NAME"
           
+          # Chuyển đổi toàn bộ thư viện dylib và framework đi kèm sang iOS 27.0 Simulator
           find "$APP_PATH" \( -name "*.dylib" -o -path "*.framework/*" \) -type f | while read -r file; do
             if file "$file" | grep -q "Mach-O"; then
-              vtool -set-build-version 7 18.5 18.5 -replace -output "$file" "$file" || true
+              vtool -set-build-version 7 27.0 27.0 -replace -output "$file" "$file" || true
             fi
           done
 
